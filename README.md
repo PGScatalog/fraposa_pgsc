@@ -25,9 +25,9 @@ and plot the results.
     - scikit-learn
     - pyplink
     - matplotlib
-    - rpy2
-- R
-    - hdpca
+    - ~~rpy2~~
+- ~~R~~
+    - ~~hdpca~~ [removed to reduce container size]
 - PLINK 1.9
 
 # Inputs and Outputs
@@ -124,11 +124,11 @@ FRAPOSA includes 4 methods for PC score prediction.
 This method is fast and provides robust PC score prediction
 by using the online SVD algorithm.
 
-2. **AP** (also recommended):
-This method is even faster and its results are close to OADP's.
+2. ~~**AP** (also recommended)~~:
+~~This method is even faster and its results are close to OADP's.
 However, sometimes you may want to manually set the number of PCs to be adjusted for shrinkage
 (i.e. by setting `--dim_spikes`)
-if you believe that a shrunk PC has not been adjusted automatically.
+if you believe that a shrunk PC has not been adjusted automatically.~~
 
 3. **SP** (fast but inaccurate):
 This method is similar to AP

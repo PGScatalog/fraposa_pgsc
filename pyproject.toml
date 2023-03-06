@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "fraposa-pgsc"
+version = "0.1.0"
+description = "Tools to perform ancestry projection to a reference dataset within the calculator pipeline (pgsc_calc)"
+authors = ["smlmbrt <sam.a.lambert@gmail.com>"]
+license = "MIT License"
+readme = "README.md"
+packages = [{include = "fraposa_pgsc"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pandas = "^1.5.3"
+scikit-learn = "^1.2.1"
+pyplink = "^1.3.5"
+numpy = "^1.24.2"
+matplotlib = "^3.7.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
