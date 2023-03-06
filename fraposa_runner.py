@@ -6,7 +6,7 @@ import argparse, sys
 parser=argparse.ArgumentParser()
 parser.add_argument('ref_filepref', help='Prefix of the binary PLINK file for the reference samples.')
 parser.add_argument('--stu_filepref', help='Prefix of the binary PLINK file for the study samples.')
-parser.add_argument('--method', help='The method for PCA prediction. oadp: most accurate. ap: fastest. adp: accurate but slow. sp: fast but inaccurate. Default is odap.')
+parser.add_argument('--method', help='The method for PCA prediction. oadp: most accurate. adp: accurate but slow. sp: fast but inaccurate. Default is odap.')
 parser.add_argument('--dim_ref', help='Number of PCs you need.')
 parser.add_argument('--dim_stu', help='Number of PCs predicted for the study samples before doing the Procrustes transformation. Only needed for the oadp and adp methods. Default is 2*dim_ref.')
 parser.add_argument('--dim_online', help='Number of PCs to calculate in online SVD. Only needed for the oadp method. Default is 2*dim_stu')
