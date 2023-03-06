@@ -1,10 +1,10 @@
-FRAPOSA
-(Fast and Robutst Ancestry Prediction by using Online singular value decomposition and Shrinkage Adjustment)
-predicts the ancestry of study samples
-by using principle component analysis (PCA) with a reference panel.
-The software accompanies
-[this paper](https://doi.org/10.1093/bioinformatics/btaa152).
-For any questions, please contact `daiweiz at umich dot edu`.
+# FRAPOSA
+FRAPOSA (Fast and Robutst Ancestry Prediction by using Online singular value decomposition and Shrinkage Adjustment)
+is a python scrip to predict the ancestry of study samples by the results of principal component analysis (PCA) on a 
+reference panel. The software originally accompanied 
+[Zhang, Dey, and Lee. Bionformatics (2020)](https://doi.org/10.1093/bioinformatics/btaa152), but is being adapted here 
+for integration with the Polygenic Score (PGS) Catalog pipeline for calculating PGS 
+([`pgsc_calc`](https://github.com/PGScatalog/pgsc_calc)).
 
 # Example
 
@@ -19,16 +19,8 @@ and plot the results.
 
 # Software requirements
 
-- Python 3
-    - numpy
-    - pandas
-    - scikit-learn
-    - pyplink
-    - matplotlib
-    - ~~rpy2~~
-- ~~R~~
-    - ~~hdpca~~ [removed to reduce container size]
-- PLINK 1.9
+- Python 3 (see [`pyproject.toml`](pyproject.toml))
+- PLINK ([v1.9](https://www.cog-genomics.org/plink/))
 
 # Inputs and Outputs
 
@@ -118,19 +110,13 @@ to reduce the computatio time for future usage.
 ## Change analysis method
 
 
-FRAPOSA includes 4 methods for PC score prediction.
+FRAPOSA_PGSC includes 3 methods for PC score prediction.
 
 1. **OADP** (default and recommended):
 This method is fast and provides robust PC score prediction
 by using the online SVD algorithm.
 
-2. ~~**AP** (also recommended)~~:
-~~This method is even faster and its results are close to OADP's.
-However, sometimes you may want to manually set the number of PCs to be adjusted for shrinkage
-(i.e. by setting `--dim_spikes`)
-if you believe that a shrunk PC has not been adjusted automatically.~~
-
-3. **SP** (fast but inaccurate):
+2. **SP** (fast but inaccurate):
 This method is similar to AP
 and is the standard method of PC prediction.
 It computes the PC loadings of the reference set
@@ -138,7 +124,7 @@ and projects the (standardized) study samples onto them.
 Its speed is the same as AP but does not adjust for the shrinkage bias,
 which makes it inaccurate when the number of variants greatly exceeds the sample size. 
 
-4. **ADP** (accurate but slow):
+3. **ADP** (accurate but slow):
 This method is similar to OADP but has a much higher computation complexity.
 While OADP only computes the top few PCs,
 ADP computes all the PCs
@@ -148,8 +134,14 @@ The results are very close to OADP's.
 
 To change the analysis method, set the `--method` option. For example,
 ```
-./fraposa_runner.py --stu_filepref stupref --method ap refpref 
+./fraposa_runner.py --stu_filepref stupref --method sp refpref 
 ```
+
+The original package also implemented a fourth method that was removed to make the external dependancy list smaller:
+1. ~~**AP** (also recommended)~~:
+~~This method is even faster and its results are close to OADP's.However, sometimes you may want to manually set the 
+number of PCs to be adjusted for shrinkage (i.e. by setting `--dim_spikes`) if you believe that a shrunk PC has not
+been adjusted automatically.~~ Required the python package (`rpy2`), an installation of R and the R package (`hdpca`).
 
 ## Change the other parameters
 
