@@ -7,6 +7,9 @@ license = "MIT License"
 readme = "README.md"
 packages = [{include = "fraposa_pgsc"}]
 
+[tool.poetry.scripts]
+fraposa = "fraposa_pgsc.fraposa_runner:main"
+
 [tool.poetry.dependencies]
 python = "^3.10"
 pandas = "^1.5.3"
@@ -14,7 +17,6 @@ scikit-learn = "^1.2.1"
 pyplink = "^1.3.5"
 numpy = "^1.24.2"
 matplotlib = "^3.7.1"
-
 
 [build-system]
 requires = ["poetry-core"]

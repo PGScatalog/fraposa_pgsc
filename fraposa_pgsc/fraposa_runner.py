@@ -1,9 +1,9 @@
 #! /usr/bin/env python
 
-import fraposa as fp
+import fraposa_pgsc.fraposa as fp
 import argparse
 
-if __name__ == '__main__':
+def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('ref_filepref', help='Prefix of the binary PLINK file for the reference samples.')
     parser.add_argument('--stu_filepref', help='Prefix of the binary PLINK file for the study samples.')
@@ -49,3 +49,7 @@ if __name__ == '__main__':
         dim_spikes_max = int(args.dim_spikes_max)
 
     fp.pca(ref_filepref=ref_filepref, stu_filepref=stu_filepref, out_filepref=out_filepref, method=method, dim_ref=dim_ref, dim_stu=dim_stu, dim_online=dim_online, dim_rand=dim_rand, dim_spikes=dim_spikes, dim_spikes_max=dim_spikes_max)
+
+
+if __name__ == '__main__':
+    main()
