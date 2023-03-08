@@ -1,6 +1,9 @@
 MIT License
 
-Copyright (c) 2023 Daiwei Zhang
+Copyright (c) for portions of fraposa_pgsc are held by Daiwei Zhang (2023) as part 
+of the original fraposa software implementation. All other changes in the fraposa_pgsc 
+repository are Copyright (c) and held by PGS Catalog team (including Samuel Lambert, 
+Benjamin Wingfield) (2023).
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
