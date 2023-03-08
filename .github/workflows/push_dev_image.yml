@@ -47,7 +47,7 @@ jobs:
     needs: build_docker_dev
     name: build singularity development image
     runs-on: ubuntu-latest
-    if: ${{ github.repository == 'pgscatalog/pgsc_fraposa' }}
+    if: ${{ github.repository == 'pgscatalog/fraposa_pgsc' }}
 
     steps:
       - name: Check out pipeline code
