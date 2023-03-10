@@ -1,5 +1,6 @@
 ## FRAPOSA: Fast and Robust Ancestry Prediction by Online singular value decomposition and Shrinkage Adjustment
-## Author: David (Daiwei) Zhang
+## Original Author: David (Daiwei) Zhang
+## Modifications: Samuel Lambert
 
 import numpy as np
 import pandas as pd
