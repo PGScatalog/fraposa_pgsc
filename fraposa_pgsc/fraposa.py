@@ -134,6 +134,7 @@ def read_bed(bed_filepref, dtype=np.int8):
     bed = np.zeros(shape=(p, n), dtype=dtype)
     for (i, (snp, genotypes)) in enumerate(pyp):
         bed[i,:] = genotypes
+    pyp.close()
     # for i in range(p):
     #     for j in range(n):
     #         bed[i,j] = 2 - bed[i,j]
@@ -141,6 +142,33 @@ def read_bed(bed_filepref, dtype=np.int8):
     bed *= -1
     bed += 2
     return bed, bim, fam
+
+
+def bim_varlist(bim):
+    compcols = ['chrom', 'pos', 'a1', 'a2']
+    return [':'.join(map(str, row) )for i, row in bim[compcols].iterrows()]
+
+
+def check_bims(ref_bim, stu_bim):
+    """Function to ensure that the variants are consistently ordered across files"""
+    ref_vars = bim_varlist(ref_bim)
+    stu_vars = bim_varlist(stu_bim)
+    check_varlist(ref_vars, stu_vars)
+
+
+def check_varlist(ref_vl, stu_vl):
+    if len(ref_vl) != len(stu_vl):
+        logging.error("ABORT: Different number of variants between reference ({}) and study ({}) datasets.".format(len(ref_vl), len(stu_vl)))
+        sys.exit(1)
+
+    if ref_vl != stu_vl:
+        logging.error("ABORT: Variants do not match across bim files (comp keys: {})".format(compcols))
+        sys.exit(1)
+
+
+def save_vars_bim(bim, loc_output):
+    with open(loc_output, 'w') as outf:
+        outf.write('\n'.join(bim_varlist(bim)))
 
 
 def standardize(X, mean=None, std=None, miss=3):
@@ -315,6 +343,7 @@ def pca(ref_filepref, stu_filepref=None, out_filepref=None, method='oadp',
             np.savetxt(ref_filepref+'_Vs.dat', pcs_ref, fmt=output_fmt)
             np.savetxt(ref_filepref+'_U.dat', U, fmt=output_fmt)
             logging.info('Reference PC scores saved to ' + ref_filepref + '_Vs.dat')
+            save_vars_bim(X_bim, ref_filepref+'_vars.dat')
         pca_stu_kwargs = {'U':U, 's':s, 'V':V, 'pcs_ref':pcs_ref, 'dim_ref':dim_ref, 'dim_stu':dim_stu, 'dim_online':dim_online}
 
     # Commented to remove requirement for R
@@ -348,6 +377,7 @@ def pca(ref_filepref, stu_filepref=None, out_filepref=None, method='oadp',
     #         np.savetxt(ref_filepref+'_Vs.dat', pcs_ref, fmt=output_fmt)
     #         np.savetxt(ref_filepref+'_Ushrink.dat', Ushrink, fmt=output_fmt)
     #         logging.info('Reference PC scores saved to ' + ref_filepref + '.pcs')
+    #         save_vars_bim(X_bim, ref_filepref + '_vars.dat')
     #     pca_stu_kwargs = {'U':Ushrink, 'dim_ref':dim_ref}
 
     if method == 'sp':
@@ -373,6 +403,7 @@ def pca(ref_filepref, stu_filepref=None, out_filepref=None, method='oadp',
             np.savetxt(ref_filepref+'_mnsd.dat', np.hstack((X_mean, X_std)), fmt=output_fmt)
             np.savetxt(ref_filepref+'_Vs.dat', pcs_ref, fmt=output_fmt)
             np.savetxt(ref_filepref+'_U.dat', U, fmt=output_fmt)
+            save_vars_bim(X_bim, ref_filepref + '_vars.dat')
             logging.info('Reference PC scores saved to ' + ref_filepref + '.pcs')
         pca_stu_kwargs = {'U':U, 'dim_ref':dim_ref}
 
@@ -399,13 +430,23 @@ def pca(ref_filepref, stu_filepref=None, out_filepref=None, method='oadp',
             pcs_ref = V[:, :dim_ref] * s[:dim_ref]
             np.savetxt(ref_filepref+'_mnsd.dat', np.hstack((X_mean, X_std)), fmt=output_fmt)
             np.savetxt(ref_filepref+'_Vs.dat', pcs_ref, fmt=output_fmt)
+            save_vars_bim(X_bim, ref_filepref + '_vars.dat')
             logging.info('Reference PC scores saved to ' + ref_filepref + '.pcs')
         pca_stu_kwargs = {'pcs_ref':pcs_ref, 'XTX':XTX, 'X':X, 'dim_ref':dim_ref, 'dim_stu':dim_stu}
 
     if stu_filepref is not None:
         logging.info(datetime.now())
         logging.info('Loading study data...')
-        W, W_bim, W_fam = read_bed(stu_filepref, dtype=np.int8) # ToDo: read chunks of a bfile (e.g. not hold all in memory)
+        W, W_bim, W_fam = read_bed(stu_filepref, dtype=np.int8)
+
+        try:
+            check_bims(X_bim, W_bim)  # check to see that the variants are compatible between reference and study
+        except:
+            with open(ref_filepref + '_vars.dat', 'r') as infile:
+                ref_vars = infile.read().strip().split('\n')
+            stu_vars = bim_varlist(W_bim)
+            check_varlist(ref_vars, stu_vars)
+        logging.info('Variants match across reference and study datasets')
 
         logging.info(datetime.now())
         logging.info('Predicting study PC scores (method: ' + method + ')...')
