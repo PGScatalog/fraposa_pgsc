@@ -1,5 +1,6 @@
 ## FRAPOSA: Fast and Robust Ancestry Prediction by Online singular value decomposition and Shrinkage Adjustment
-## Author: David (Daiwei) Zhang
+## Original Author: David (Daiwei) Zhang
+## Modifications: Samuel Lambert
 
 import numpy as np
 import pandas as pd
@@ -125,15 +126,33 @@ def procrustes_diffdim(Y_mat, X_mat, n_iter_max=10000, epsilon_min=1e-6, return_
             return R, rho, c
 
 
-def read_bed(bed_filepref, dtype=np.int8):
+def read_bed(bed_filepref, dtype=np.int8, filt_iid=None):
     pyp = PyPlink(bed_filepref)
     bim = pyp.get_bim()
     fam = pyp.get_fam()
     p = len(bim)
     n = len(fam)
-    bed = np.zeros(shape=(p, n), dtype=dtype)
-    for (i, (snp, genotypes)) in enumerate(pyp):
-        bed[i,:] = genotypes
+
+    if type(filt_iid) is list:
+        matched_ids = set(filt_iid).intersection(fam['iid'])
+        if len(matched_ids) == 0:
+            logging.error('ERROR: 0 / {} ids in filter list match the study dataset'.format(len(filt_iid)))
+            sys.exit(1)
+        bed = np.zeros(shape=(p, len(matched_ids)), dtype=dtype)
+        fam_mask = fam.iid.isin(matched_ids)
+        i_extract = np.where(fam_mask == True)
+        for (i, (snp, genotypes)) in enumerate(pyp):
+            bed[i,:] = genotypes[i_extract]
+        fam = fam.loc[fam_mask,:]
+        if len(matched_ids) < len(filt_iid):
+            logging.warning('Warning: only {} / {} ids in filter list match the study dataset'.format(len(matched_ids),
+                                                                                                      len(filt_iid)))
+        else:
+            logging.info('Extracted {} samples from study genotyping data'.format(len(matched_ids)))
+    else:
+        bed = np.zeros(shape=(p, n), dtype=dtype)
+        for (i, (snp, genotypes)) in enumerate(pyp):
+            bed[i,:] = genotypes
     pyp.close()
     # for i in range(p):
     #     for j in range(n):
@@ -164,6 +183,9 @@ def check_varlist(ref_vl, stu_vl):
     if ref_vl != stu_vl:
         logging.error("ABORT: Variants do not match across bim files (comp keys: {})".format(compcols))
         sys.exit(1)
+
+    # If it makes it to here all things are good
+    logging.info('Variants match across reference and study datasets')
 
 
 def save_vars_bim(bim, loc_output):
@@ -256,6 +278,10 @@ def pca_stu(W, X_mean, X_std, method,
     if method == 'adp':
         assert all([a is not None for a in [XTX, X, pcs_ref, dim_ref, dim_stu]])
 
+    reporting_chunk = (n_stu // 10)
+    if reporting_chunk == 0:
+        reporting_chunk = 1
+
     for i in range(n_stu):
         w = W[:,i].astype(np.float64).reshape((-1,1))
         standardize(w, X_mean, X_std, miss=3)
@@ -265,14 +291,14 @@ def pca_stu(W, X_mean, X_std, method,
             pcs_stu[i,:] = w.T @ U[:,:dim_ref]
         if method =='adp':
             pcs_stu[i,:] = adp(XTX, X, w, pcs_ref, dim_stu=dim_stu)
-        if (i+1) % (n_stu // 10) == 0:
-            print('Finished {} out of {} study samples.'.format(i+1, n_stu))
+        if (i+1) % reporting_chunk == 0:
+            logging.info('Finished {} out of {} study samples.'.format(i+1, n_stu))
 
     del W
     return pcs_stu
 
 
-def pca(ref_filepref, stu_filepref=None, out_filepref=None, method='oadp',
+def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, method='oadp',
         dim_ref=4, dim_stu=None, dim_online=None, dim_rand=None, dim_spikes=None, dim_spikes_max=None):
 
     create_logger(out_filepref)
@@ -437,16 +463,16 @@ def pca(ref_filepref, stu_filepref=None, out_filepref=None, method='oadp',
     if stu_filepref is not None:
         logging.info(datetime.now())
         logging.info('Loading study data...')
-        W, W_bim, W_fam = read_bed(stu_filepref, dtype=np.int8)
+        W, W_bim, W_fam = read_bed(stu_filepref, dtype=np.int8, filt_iid=stu_filt_iid)
 
+        # check to see that the variants are compatible between reference and study
         try:
-            check_bims(X_bim, W_bim)  # check to see that the variants are compatible between reference and study
-        except:
+            check_bims(X_bim, W_bim)
+        except NameError:
             with open(ref_filepref + '_vars.dat', 'r') as infile:
                 ref_vars = infile.read().strip().split('\n')
             stu_vars = bim_varlist(W_bim)
             check_varlist(ref_vars, stu_vars)
-        logging.info('Variants match across reference and study datasets')
 
         logging.info(datetime.now())
         logging.info('Predicting study PC scores (method: ' + method + ')...')
@@ -454,14 +480,22 @@ def pca(ref_filepref, stu_filepref=None, out_filepref=None, method='oadp',
         pcs_stu = pca_stu(W, X_mean, X_std, method, **pca_stu_kwargs)
         elapse_stu = time.time() - t0
 
-        X_fam = pd.read_table(ref_filepref+'.fam', header=None, sep=' ')
+        # Create outputs
+        colnames_pcs = ['PC{}'.format(x+1) for x in range(dim_ref)]
+
+        with PyPlink(ref_filepref) as ref_plink:
+            X_fam = ref_plink.get_fam()
         pcs_ref = np.loadtxt(ref_filepref+'_Vs.dat')
-        pcs_ref_df = pd.concat([X_fam.iloc[:,0:2], pd.DataFrame(pcs_ref)], axis=1)
-        pcs_ref_df.to_csv(ref_filepref+'.pcs', sep='\t', header=False, index=False)
-        pcs_stu_df = pd.concat([W_fam.iloc[:,0:2], pd.DataFrame(pcs_stu)], axis=1)
-        pcs_stu_df.to_csv(out_filepref+'.pcs', sep='\t', header=False, index=False)
-        # np.savetxt(out_filepref+'.pcs', pcs_stu, fmt=output_fmt, delimiter='\t')
+        pcs_ref = pd.DataFrame(data=pcs_ref, index=X_fam['iid'], columns=colnames_pcs)
+        pcs_ref.index.name = 'IID'
+        pcs_ref.to_csv(ref_filepref+'.pcs', sep='\t', header=True, index=True)
+
+        pcs_stu = pd.DataFrame(data=pcs_stu, index=W_fam['iid'], columns=colnames_pcs)
+        pcs_stu.index.name = 'IID'
+        pcs_stu.to_csv(out_filepref+'.pcs', sep='\t', header=True, index=True)
         logging.info('Study PC scores saved to ' + out_filepref+'.pcs')
+
+        # Finish & Log
         logging.info('Study time: {} sec'.format(elapse_stu, 1))
         logging.info(datetime.now())
         logging.info('FRAPOSA finished.')
