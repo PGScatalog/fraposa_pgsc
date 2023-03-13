@@ -465,9 +465,10 @@ def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, m
         logging.info('Loading study data...')
         W, W_bim, W_fam = read_bed(stu_filepref, dtype=np.int8, filt_iid=stu_filt_iid)
 
+        # check to see that the variants are compatible between reference and study
         try:
-            check_bims(X_bim, W_bim)  # check to see that the variants are compatible between reference and study
-        except:
+            check_bims(X_bim, W_bim)
+        except NameError:
             with open(ref_filepref + '_vars.dat', 'r') as infile:
                 ref_vars = infile.read().strip().split('\n')
             stu_vars = bim_varlist(W_bim)
