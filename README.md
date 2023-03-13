@@ -64,13 +64,13 @@ batches. Then FRAPOSA can be run on each batch sequentially or (embarrassingly) 
 You can determine unique chunks of samples to be read into memory. A `{stupref}.fam` file can be split into sets of 1000 
 samples using the following command:
 ```
-cut -f1,2 {stupref}.fam | split -l 1000 -a 4 - split_ids_
+cut -f2 -d ' ' {stupref}.fam | split -l 1000 -a 4 - split_ids_
 ```
 This will yield a list of files `split_ids_*` that you can then run in series or in paraellel, for example:
 ```
 fraposa {refpref} # run so that the *dat files are already made and consistent across splits of the study data
 
-for $x in split_ids_*; do
+for x in split_ids_*; do
   fraposa {refpref} --stu_filepref {stupref} --stu_filt_iid $x --out $x
 done
 ```

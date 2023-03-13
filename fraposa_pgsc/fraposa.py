@@ -184,6 +184,9 @@ def check_varlist(ref_vl, stu_vl):
         logging.error("ABORT: Variants do not match across bim files (comp keys: {})".format(compcols))
         sys.exit(1)
 
+    # If it makes it to here all things are good
+    logging.info('Variants match across reference and study datasets')
+
 
 def save_vars_bim(bim, loc_output):
     with open(loc_output, 'w') as outf:
@@ -469,7 +472,6 @@ def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, m
                 ref_vars = infile.read().strip().split('\n')
             stu_vars = bim_varlist(W_bim)
             check_varlist(ref_vars, stu_vars)
-        logging.info('Variants match across reference and study datasets')
 
         logging.info(datetime.now())
         logging.info('Predicting study PC scores (method: ' + method + ')...')
@@ -477,14 +479,22 @@ def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, m
         pcs_stu = pca_stu(W, X_mean, X_std, method, **pca_stu_kwargs)
         elapse_stu = time.time() - t0
 
-        X_fam = pd.read_table(ref_filepref+'.fam', header=None, sep=' ')
+        # Create outputs
+        colnames_pcs = ['PC{}'.format(x+1) for x in range(dim_ref)]
+
+        with PyPlink(ref_filepref) as ref_plink:
+            X_fam = ref_plink.get_fam()
         pcs_ref = np.loadtxt(ref_filepref+'_Vs.dat')
-        pcs_ref_df = pd.concat([X_fam.iloc[:,0:2], pd.DataFrame(pcs_ref)], axis=1)
-        pcs_ref_df.to_csv(ref_filepref+'.pcs', sep='\t', header=False, index=False)
-        pcs_stu_df = pd.concat([W_fam.iloc[:,0:2], pd.DataFrame(pcs_stu)], axis=1)
-        pcs_stu_df.to_csv(out_filepref+'.pcs', sep='\t', header=False, index=False)
-        # np.savetxt(out_filepref+'.pcs', pcs_stu, fmt=output_fmt, delimiter='\t')
+        pcs_ref = pd.DataFrame(data=pcs_ref, index=X_fam['iid'], columns=colnames_pcs)
+        pcs_ref.index.name = 'IID'
+        pcs_ref.to_csv(ref_filepref+'.pcs', sep='\t', header=True, index=True)
+
+        pcs_stu = pd.DataFrame(data=pcs_stu, index=W_fam['iid'], columns=colnames_pcs)
+        pcs_stu.index.name = 'IID'
+        pcs_stu.to_csv(out_filepref+'.pcs', sep='\t', header=True, index=True)
         logging.info('Study PC scores saved to ' + out_filepref+'.pcs')
+
+        # Finish & Log
         logging.info('Study time: {} sec'.format(elapse_stu, 1))
         logging.info(datetime.now())
         logging.info('FRAPOSA finished.')
