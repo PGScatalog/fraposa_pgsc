@@ -3,8 +3,9 @@
 import fraposa_pgsc.fraposa as fp
 import argparse
 
+
 def main():
-    parser=argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
     parser.add_argument('ref_filepref', help='Prefix of the binary PLINK file for the reference samples.')
     parser.add_argument('--stu_filepref', help='Prefix of the binary PLINK file for the study samples.')
     parser.add_argument('--stu_filt_iid', help='File with list of IIDs to extract from the study file')

@@ -6,21 +6,11 @@ reference panel. The software originally accompanied
 for integration with the Polygenic Score (PGS) Catalog pipeline for calculating PGS 
 ([`pgsc_calc`](https://github.com/PGScatalog/pgsc_calc)).
 
-# Example
-
-Run
-```
-./run_example.sh
-```
-to see an example of using FRAPOSA.
-The script will download the reference and study data,
-predict the study samples' PC scores and ancestry memberships,
-and plot the results.
 
 # Software requirements
 
-- Python 3 (see [`pyproject.toml`](pyproject.toml))
-- PLINK ([v1.9](https://www.cog-genomics.org/plink/))
+- Python 3 (see [`pyproject.toml`](pyproject.toml) for package requirements)
+- PLINK ([v1.9](https://www.cog-genomics.org/plink/)) - only needed for data preparation
 
 # Inputs and Outputs
 
@@ -36,10 +26,14 @@ and plot the results.
   - Column 3: Population membership label 
 
 ## Output files
-
+`fraposa`:
 - Reference PC scores: `refpref.pcs`
 - Study PC scores: `stupref.pcs`
+
+`fraposa_pred`:
 - Study ancestry memberships: `stupref.popu`
+
+`fraposa_plot`:
 - PC plot: `stupref.png`
 
 
@@ -47,45 +41,53 @@ and plot the results.
 
 ## Extract common variants
 
-The reference and study samples must have the same set of variants
-(i.e. the two `.bim` files must be identical).
-To extract the common variants between two datasets,
-you can use PLINK manually
-or use the included `commvar.sh` script:
+The reference and study samples must have the same set of variants (i.e. the two `.bim` files must be identical).
+To extract the common variants between two datasets, you can use PLINK manually or use the included `commvar.sh` script:
 ```
 ./commvar.sh refpref_raw stupref_raw refpref stupref
 ```
-This command will find the common variants in 
-`refpref_raw.{bed,bim,fam}` and `stupref_raw.{bed,bim,fam}`
-and then output the intersected datasets
-in `refpref.{bed,bim,fam}` and `stupref.{bed,bim,fam}`.
+This command will find the common variants in `refpref_raw.{bed,bim,fam}` and `stupref_raw.{bed,bim,fam}`
+and then output the intersected datasets in `refpref.{bed,bim,fam}` and `stupref.{bed,bim,fam}`. However; this reuqires 
+identical allele orientation between the two datasets. In the `pgsc_calc` pipeline we use a more flexible script 
+[intersect_variants.sh](https://github.com/PGScatalog/pgsc_calc/blob/465d77ff0c938f2cd7465afa41eb10be4a9e8b2c/bin/intersect_variants.sh)
+to identify variants that can be extacted within our 
+[subworkflow](https://github.com/PGScatalog/pgsc_calc/blob/fraposa/subworkflows/local/ancestry/ancestry_oadp.nf) 
+for ancestry analysis.
 
 ## Split study samples
 
-FRAPOSA loads all the study samples into memory.
-If the study set is too large,
-its samples can be split into smaller batches.
-Then FRAPOSA can be run on each batch
-sequentially or (embarrassingly) parallelly.
-Just as for extracting the common variants,
-you can split the study samples manually using PLINK
-or run the included script `splitindiv.sh`: 
+FRAPOSA loads all the study samples into memory. If the study set is too large, its samples can be split into smaller 
+batches. Then FRAPOSA can be run on each batch sequentially or (embarrassingly) parallelly. This can be done by either
+(1) only reading a subset of samples from the study `stupref.{bed,bim,fam}` files, or (2) splitting the inputs. 
+
+### 1. Reading a subset of samples
+You can determine unique chunks of samples to be read into memory. A `{stupref}.fam` file can be split into sets of 1000 
+samples using the following command:
+```
+cut -f1,2 {stupref}.fam | split -l 1000 -a 4 - split_ids_
+```
+This will yield a list of files `split_ids_*` that you can then run in series or in paraellel, for example:
+```
+fraposa {refpref} # run so that the *dat files are already made and consistent across splits of the study data
+
+for $x in split_ids_*; do
+  fraposa {refpref} --stu_filepref {stupref} --stu_filt_iid $x --out $x
+done
+```
+This has the benefit of keeping space low - it's better to have pr
+
+### 2. Splitting input files
+Just as for extracting the common variants, you can split the study samples manually using PLINK or run the included 
+script `splitindiv.sh`: 
 ```
 ./splitindiv.sh stupref n i stupref_batch_i
 ```
-which divides the samples in `stupref.{bed,bim,fam}`
-evenly into `n` batches
-and saves the samples in batch `i`
-into `stupref_batch_i.{bed,bim,fam}`
-For example,
-if `stupref.{bed,bim,fam}` has 100,000 samples,
-then
+which divides the samples in `stupref.{bed,bim,fam}` evenly into `n` batches and saves the samples in batch `i` into 
+`stupref_batch_i.{bed,bim,fam}`. For example, if `stupref.{bed,bim,fam}` has 100,000 samples, then
 ```
 ./splitindiv.sh stupref 100 12 stupref_batch_12
 ```
-produces `stupref_batch_12.{bed,bim,fam}`
-that contains sample 12,001 to 13,000.
-To generate all the 100 batches,
+produces `stupref_batch_12.{bed,bim,fam}` that contains sample 12,001 to 13,000. To generate all the 100 batches, 
 you can use
 ```
 for i in `seq 1 100`; do

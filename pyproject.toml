@@ -9,6 +9,8 @@ packages = [{include = "fraposa_pgsc"}]
 
 [tool.poetry.scripts]
 fraposa = "fraposa_pgsc.fraposa_runner:main"
+fraposa_pred = "fraposa_pgsc.predstupopu:main"
+fraposa_plot = "fraposa_pgsc.plotpcs:main"
 
 # note: poetry currently has half-implemented support for shell scripts
 # https://github.com/python-poetry/poetry/issues/241#issuecomment-1459952704
