@@ -488,12 +488,12 @@ def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, m
         pcs_ref = np.loadtxt(ref_filepref+'_Vs.dat')
         pcs_ref = pd.DataFrame(data=pcs_ref, index=X_fam['iid'], columns=colnames_pcs)
         pcs_ref.index.name = 'IID'
-        pcs_ref.to_csv(ref_filepref+'.pcs', sep='\t', header=True, index=True)
+        pcs_ref.to_csv(ref_filepref+'.pcs', sep='\t', header=True, index=True, float_format=output_fmt)
 
         pcs_stu = pd.DataFrame(data=pcs_stu, index=W_fam['iid'], columns=colnames_pcs)
         pcs_stu.index.name = 'IID'
-        pcs_stu.to_csv(out_filepref+'.pcs', sep='\t', header=True, index=True)
-        logging.info('Study PC scores saved to ' + out_filepref+'.pcs')
+        pcs_stu.to_csv(out_filepref + '.pcs', sep='\t', header=True, index=True, float_format=output_fmt)
+        logging.info('Study PC scores saved to ' + out_filepref +'.pcs')
 
         # Finish & Log
         logging.info('Study time: {} sec'.format(elapse_stu, 1))
