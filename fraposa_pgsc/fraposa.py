@@ -181,7 +181,7 @@ def check_varlist(ref_vl, stu_vl):
         sys.exit(1)
 
     if ref_vl != stu_vl:
-        logging.error("ABORT: Variants do not match across bim files (comp keys: {})".format(compcols))
+        logging.error("ABORT: Variants do not match across bim files (comp keys: {'chrom', 'pos', 'a1', 'a2'})")
         sys.exit(1)
 
     # If it makes it to here all things are good
