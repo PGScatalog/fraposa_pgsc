@@ -298,11 +298,11 @@ def pca_stu(W, X_mean, X_std, method,
     return pcs_stu
 
 
-def _write_pcs_ref(df_pcs, df_fam, colnames, ref_filepref, output_fmt):
+def _write_pcs(df_pcs, df_fam, colnames, filepref, output_fmt, stage='REFERENCE'):
     pcs_ref = pd.DataFrame(data=df_pcs, index=df_fam['iid'], columns=colnames)
     pcs_ref.index.name = 'IID'
-    pcs_ref.to_csv(ref_filepref + '.pcs', sep='\t', header=True, index=True, float_format=output_fmt)
-    logging.info('Reference PC scores saved to ' + ref_filepref + '.pcs')
+    pcs_ref.to_csv(filepref + '.pcs', sep='\t', header=True, index=True, float_format=output_fmt)
+    logging.info('{} PC scores saved to {}.pcs'.format(stage, filepref))
 
 
 def _load_pcs_ref(ref_filepref):
@@ -372,8 +372,8 @@ def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, m
                          + ref_filepref + '_*.dat and ' + ref_filepref + '.pcs then rerun FRAPOSA.')
             logging.info('Reference PCA result successfully loaded.')
         except OSError:
-            logging.info('Reference PCA result is either nonexistent or incomplete.')
-            logging.info('Calculating reference PCA....')
+            logging.info('REFERENCE PCA result is either nonexistent or incomplete.')
+            logging.info('Calculating REFERENCE PCA....')
             X, X_bim, X_fam = read_bed(ref_filepref, dtype=np.float32)
             X_mean, X_std = standardize(X)
             if method == 'oadp':
@@ -387,7 +387,7 @@ def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, m
             np.savetxt(ref_filepref+'_s.dat', s, fmt=output_fmt)
             np.savetxt(ref_filepref+'_V.dat', V, fmt=output_fmt)
             np.savetxt(ref_filepref+'_U.dat', U, fmt=output_fmt)
-            _write_pcs_ref(pcs_ref, X_fam, colnames_pcs, ref_filepref, output_fmt)
+            _write_pcs(pcs_ref, X_fam, colnames_pcs, ref_filepref, output_fmt)
             save_vars_bim(X_bim, ref_filepref+'_vars.dat')
         pca_stu_kwargs = {'U':U, 's':s, 'V':V, 'pcs_ref':pcs_ref, 'dim_ref':dim_ref, 'dim_stu':dim_stu, 'dim_online':dim_online}
 
@@ -436,8 +436,8 @@ def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, m
                          + ref_filepref + '_*.dat and ' + ref_filepref + '.pcs then rerun FRAPOSA.')
             logging.info('Reference PCA result loaded.')
         except OSError:
-            logging.info('Reference PCA result is either nonexistent or incomplete.')
-            logging.info('Calculating reference PCA....')
+            logging.info('REFERENCE PCA result is either nonexistent or incomplete.')
+            logging.info('Calculating REFERENCE PCA....')
             X, X_bim, X_fam = read_bed(ref_filepref, dtype=np.float32)
             X_mean, X_std = standardize(X)
             s, V = eig_ref(X)[:2]
@@ -445,7 +445,7 @@ def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, m
             pcs_ref = V[:, :dim_ref] * s[:dim_ref]
             U = X @ (V / s[:dim_ref])
             np.savetxt(ref_filepref+'_mnsd.dat', np.hstack((X_mean, X_std)), fmt=output_fmt)
-            _write_pcs_ref(pcs_ref, X_fam, colnames_pcs, ref_filepref, output_fmt)
+            _write_pcs(pcs_ref, X_fam, colnames_pcs, ref_filepref, output_fmt)
             np.savetxt(ref_filepref+'_U.dat', U, fmt=output_fmt)
             save_vars_bim(X_bim, ref_filepref + '_vars.dat')
         pca_stu_kwargs = {'U':U, 'dim_ref':dim_ref}
@@ -464,14 +464,14 @@ def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, m
                          + ref_filepref + '_*.dat and ' + ref_filepref + '.pcs then rerun FRAPOSA.')
             logging.info('Reference PCA result loaded.')
         except OSError:
-            logging.info('Reference PCA result is either nonexistent or incomplete.')
-            logging.info('Calculating reference PCA....')
+            logging.info('REFERENCE PCA result is either nonexistent or incomplete.')
+            logging.info('Calculating REFERENCE PCA....')
             X_mean, X_std = standardize(X)
             s, V, XTX = eig_ref(X)
             V = V[:, :dim_ref]
             pcs_ref = V[:, :dim_ref] * s[:dim_ref]
             np.savetxt(ref_filepref+'_mnsd.dat', np.hstack((X_mean, X_std)), fmt=output_fmt)
-            _write_pcs_ref(pcs_ref, X_fam, colnames_pcs, ref_filepref, output_fmt)
+            _write_pcs(pcs_ref, X_fam, colnames_pcs, ref_filepref, output_fmt)
             save_vars_bim(X_bim, ref_filepref + '_vars.dat')
         pca_stu_kwargs = {'pcs_ref':pcs_ref, 'XTX':XTX, 'X':X, 'dim_ref':dim_ref, 'dim_stu':dim_stu}
 
@@ -495,11 +495,8 @@ def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, m
         pcs_stu = pca_stu(W, X_mean, X_std, method, **pca_stu_kwargs)
         elapse_stu = time.time() - t0
 
-        # Create outputs
-        pcs_stu = pd.DataFrame(data=pcs_stu, index=W_fam['iid'], columns=colnames_pcs)
-        pcs_stu.index.name = 'IID'
-        pcs_stu.to_csv(out_filepref + '.pcs', sep='\t', header=True, index=True, float_format=output_fmt)
-        logging.info('Study PC scores saved to ' + out_filepref +'.pcs')
+        # Write output
+        _write_pcs(pcs_stu, W_fam, colnames_pcs, out_filepref, output_fmt, stage='STUDY')
 
         # Finish & Log
         logging.info('Study time: {} sec'.format(elapse_stu, 1))
@@ -508,7 +505,7 @@ def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, m
 
 
 def pred_popu_stu(ref_filepref, stu_filepref, n_neighbors=20, weights='uniform'):
-
+    # ToDo - test implementation
     # load reference and study pc scores and population
     ref_df = pd.read_table(ref_filepref+'.pcs', header=None)
     stu_df = pd.read_table(stu_filepref+'.pcs', header=None)
@@ -538,6 +535,7 @@ def pred_popu_stu(ref_filepref, stu_filepref, n_neighbors=20, weights='uniform')
 
 
 def plot_pcs(ref_filepref, stu_filepref):
+    # ToDo - test implementation
     pcs_ref = np.loadtxt(ref_filepref+'.pcs', dtype=str)[:,2:].astype(float)
     pcs_stu = np.loadtxt(stu_filepref+'.pcs', dtype=str)[:,2:].astype(float)
     try:
