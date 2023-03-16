@@ -27,14 +27,14 @@ for integration with the Polygenic Score (PGS) Catalog pipeline for calculating 
 
 ## Output files
 `fraposa`:
-- Reference PC scores: `refpref.pcs`
-- Study PC scores: `stupref.pcs`
+- Reference PC scores: `{refpref}.pcs`
+- Study PC scores: `{stupref}.pcs`
 
 `fraposa_pred`:
-- Study ancestry memberships: `stupref.popu`
+- Study ancestry memberships: `{stupref}.popu`
 
 `fraposa_plot`:
-- PC plot: `stupref.png`
+- PC plot: `{stupref}.png`
 
 
 # Preprocessing
@@ -184,7 +184,7 @@ then you need to delete all the intermediate `.dat` files with the same prefix a
 
 FRAPOSA saves the intermediate files related to PCA on the reference set. Specifically, variants used (`{refpref}_vars.dat`), 
 the mean and standard deviation of each variant (`{refpref}_mnsd.dat`), singular values (`{refpref}_s.dat`), reference 
-PC loadings (`{refpref}_U.dat`), scaled (`refpref_V.dat`) and unscaled (`refpref_Vs.dat`) reference PC scores are saved
+PC loadings (`{refpref}_U.dat`), scaled (`{refpref}.pcs`) and unscaled (`refpref_V.dat`) reference PC scores are saved
 and will be automatically loaded if the same reference set is used again. This avoids running PCA on the same reference 
 set multiple times, especially in the case when the study samples are split into batches and are analyzed with the same 
 reference set.
