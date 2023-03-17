@@ -1,5 +1,5 @@
 # FRAPOSA
-FRAPOSA (Fast and Robutst Ancestry Prediction by using Online singular value decomposition and Shrinkage Adjustment)
+FRAPOSA (Fast and Robust Ancestry Prediction by using Online singular value decomposition and Shrinkage Adjustment)
 is a python scrip to predict the ancestry of study samples by the results of principal component analysis (PCA) on a 
 reference panel. The software originally accompanied 
 [Zhang, Dey, and Lee. Bionformatics (2020)](https://doi.org/10.1093/bioinformatics/btaa152), but is being adapted here 
