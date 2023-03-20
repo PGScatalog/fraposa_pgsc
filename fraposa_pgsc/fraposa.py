@@ -1,5 +1,6 @@
 ## FRAPOSA: Fast and Robust Ancestry Prediction by Online singular value decomposition and Shrinkage Adjustment
-## Author: David (Daiwei) Zhang
+## Original Author: David (Daiwei) Zhang
+## Modifications: Samuel Lambert
 
 import numpy as np
 import pandas as pd
@@ -125,15 +126,33 @@ def procrustes_diffdim(Y_mat, X_mat, n_iter_max=10000, epsilon_min=1e-6, return_
             return R, rho, c
 
 
-def read_bed(bed_filepref, dtype=np.int8):
+def read_bed(bed_filepref, dtype=np.int8, filt_iid=None):
     pyp = PyPlink(bed_filepref)
     bim = pyp.get_bim()
     fam = pyp.get_fam()
     p = len(bim)
     n = len(fam)
-    bed = np.zeros(shape=(p, n), dtype=dtype)
-    for (i, (snp, genotypes)) in enumerate(pyp):
-        bed[i,:] = genotypes
+
+    if type(filt_iid) is list:
+        matched_ids = set(filt_iid).intersection(fam['iid'])
+        if len(matched_ids) == 0:
+            logging.error('ERROR: 0 / {} ids in filter list match the study dataset'.format(len(filt_iid)))
+            sys.exit(1)
+        bed = np.zeros(shape=(p, len(matched_ids)), dtype=dtype)
+        fam_mask = fam.iid.isin(matched_ids)
+        i_extract = np.where(fam_mask == True)
+        for (i, (snp, genotypes)) in enumerate(pyp):
+            bed[i,:] = genotypes[i_extract]
+        fam = fam.loc[fam_mask,:]
+        if len(matched_ids) < len(filt_iid):
+            logging.warning('Warning: only {} / {} ids in filter list match the study dataset'.format(len(matched_ids),
+                                                                                                      len(filt_iid)))
+        else:
+            logging.info('Extracted {} samples from study genotyping data'.format(len(matched_ids)))
+    else:
+        bed = np.zeros(shape=(p, n), dtype=dtype)
+        for (i, (snp, genotypes)) in enumerate(pyp):
+            bed[i,:] = genotypes
     pyp.close()
     # for i in range(p):
     #     for j in range(n):
@@ -162,8 +181,11 @@ def check_varlist(ref_vl, stu_vl):
         sys.exit(1)
 
     if ref_vl != stu_vl:
-        logging.error("ABORT: Variants do not match across bim files (comp keys: {})".format(compcols))
+        logging.error("ABORT: Variants do not match across bim files (comp keys: {'chrom', 'pos', 'a1', 'a2'})")
         sys.exit(1)
+
+    # If it makes it to here all things are good
+    logging.info('Variants match across reference and study datasets')
 
 
 def save_vars_bim(bim, loc_output):
@@ -256,6 +278,10 @@ def pca_stu(W, X_mean, X_std, method,
     if method == 'adp':
         assert all([a is not None for a in [XTX, X, pcs_ref, dim_ref, dim_stu]])
 
+    reporting_chunk = (n_stu // 10)
+    if reporting_chunk == 0:
+        reporting_chunk = 1
+
     for i in range(n_stu):
         w = W[:,i].astype(np.float64).reshape((-1,1))
         standardize(w, X_mean, X_std, miss=3)
@@ -265,14 +291,34 @@ def pca_stu(W, X_mean, X_std, method,
             pcs_stu[i,:] = w.T @ U[:,:dim_ref]
         if method =='adp':
             pcs_stu[i,:] = adp(XTX, X, w, pcs_ref, dim_stu=dim_stu)
-        if (i+1) % (n_stu // 10) == 0:
-            print('Finished {} out of {} study samples.'.format(i+1, n_stu))
+        if (i+1) % reporting_chunk == 0:
+            logging.info('Finished {} out of {} study samples.'.format(i+1, n_stu))
 
     del W
     return pcs_stu
 
 
-def pca(ref_filepref, stu_filepref=None, out_filepref=None, method='oadp',
+def _write_pcs(df_pcs, df_fam, colnames, filepref, output_fmt, stage='REFERENCE'):
+    pcs_ref = pd.DataFrame(data=df_pcs, index=df_fam['iid'], columns=colnames)
+    pcs_ref.index.name = 'IID'
+    pcs_ref.to_csv(filepref + '.pcs', sep='\t', header=True, index=True, float_format=output_fmt)
+    logging.info('{} PC scores saved to {}.pcs'.format(stage, filepref))
+
+
+def _load_pcs_ref(ref_filepref):
+    """Returns numpy array from pcs file that has row/column names"""
+    return pd.read_csv(ref_filepref + '.pcs', sep='\t', index_col=0).to_numpy()
+
+
+def _load_mnsd(ref_filepref):
+    """Loads normalization factors (mean/std) from saved _mnsd.dat file"""
+    Xmnsd = np.loadtxt(ref_filepref + '_mnsd.dat')
+    X_mean = Xmnsd[:, 0].reshape((-1, 1))
+    X_std = Xmnsd[:, 1].reshape((-1, 1))
+    return X_mean, X_std
+
+
+def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, method='oadp',
         dim_ref=4, dim_stu=None, dim_online=None, dim_rand=None, dim_spikes=None, dim_spikes_max=None):
 
     create_logger(out_filepref)
@@ -298,6 +344,7 @@ def pca(ref_filepref, stu_filepref=None, out_filepref=None, method='oadp',
     logging.info('Output prefix: {}'.format(out_filepref))
     logging.info('Method: {}'.format(method))
     logging.info('Reference dimension: {}'.format(dim_ref))
+    colnames_pcs = ['PC{}'.format(x + 1) for x in range(dim_ref)]
     if method in ['oadp', 'adp']:
         logging.info('Study dimension: {}'.format(dim_stu))
     if method == 'oadp':
@@ -316,18 +363,17 @@ def pca(ref_filepref, stu_filepref=None, out_filepref=None, method='oadp',
     if method in ['oadp', 'randoadp']:
         try:
             logging.info('Attemping to load saved reference PCA result...')
-            Xmnsd = np.loadtxt(ref_filepref+'_mnsd.dat')
-            X_mean = Xmnsd[:,0].reshape((-1,1))
-            X_std = Xmnsd[:,1].reshape((-1,1))
+            X_mean, X_std = _load_mnsd(ref_filepref)
             s = np.loadtxt(ref_filepref+'_s.dat')
             U = np.loadtxt(ref_filepref+'_U.dat')[:, :dim_online]
             V = np.loadtxt(ref_filepref+'_V.dat')[:, :dim_online]
-            pcs_ref = np.loadtxt(ref_filepref+'_Vs.dat')[:, :dim_ref]
-            logging.info('Warning: If you have changed the parameter settings, please delete ' + ref_filepref + '_*.dat and rerun FRAPOSA.')
+            pcs_ref = _load_pcs_ref(ref_filepref)[:, :dim_ref]
+            logging.info('Warning: If you have changed the parameter settings, please delete '
+                         + ref_filepref + '_*.dat and ' + ref_filepref + '.pcs then rerun FRAPOSA.')
             logging.info('Reference PCA result successfully loaded.')
         except OSError:
-            logging.info('Reference PCA result is either nonexistent or incomplete.')
-            logging.info('Calculating reference PCA....')
+            logging.info('REFERENCE PCA result is either nonexistent or incomplete.')
+            logging.info('Calculating REFERENCE PCA....')
             X, X_bim, X_fam = read_bed(ref_filepref, dtype=np.float32)
             X_mean, X_std = standardize(X)
             if method == 'oadp':
@@ -340,9 +386,8 @@ def pca(ref_filepref, stu_filepref=None, out_filepref=None, method='oadp',
             np.savetxt(ref_filepref+'_mnsd.dat', np.hstack((X_mean, X_std)), fmt=output_fmt)
             np.savetxt(ref_filepref+'_s.dat', s, fmt=output_fmt)
             np.savetxt(ref_filepref+'_V.dat', V, fmt=output_fmt)
-            np.savetxt(ref_filepref+'_Vs.dat', pcs_ref, fmt=output_fmt)
             np.savetxt(ref_filepref+'_U.dat', U, fmt=output_fmt)
-            logging.info('Reference PC scores saved to ' + ref_filepref + '_Vs.dat')
+            _write_pcs(pcs_ref, X_fam, colnames_pcs, ref_filepref, output_fmt)
             save_vars_bim(X_bim, ref_filepref+'_vars.dat')
         pca_stu_kwargs = {'U':U, 's':s, 'V':V, 'pcs_ref':pcs_ref, 'dim_ref':dim_ref, 'dim_stu':dim_stu, 'dim_online':dim_online}
 
@@ -385,15 +430,14 @@ def pca(ref_filepref, stu_filepref=None, out_filepref=None, method='oadp',
         saved_allexist = all([os.path.isfile(ref_filepref+suff) for suff in saved_filesuffs])
         try:
             logging.info('Attemping to load saved reference PCA result...')
-            Xmnsd = np.loadtxt(ref_filepref+'_mnsd.dat')
-            X_mean = Xmnsd[:,0].reshape((-1,1))
-            X_std = Xmnsd[:,1].reshape((-1,1))
+            X_mean, X_std = _load_mnsd(ref_filepref)
             U = np.loadtxt(ref_filepref+'_U.dat')[:, :dim_ref]
-            logging.info('Warning: If you have changed the parameter settings, please delete ' + ref_filepref + '_*.dat and rerun FRAPOSA.')
+            logging.info('Warning: If you have changed the parameter settings, please delete '
+                         + ref_filepref + '_*.dat and ' + ref_filepref + '.pcs then rerun FRAPOSA.')
             logging.info('Reference PCA result loaded.')
         except OSError:
-            logging.info('Reference PCA result is either nonexistent or incomplete.')
-            logging.info('Calculating reference PCA....')
+            logging.info('REFERENCE PCA result is either nonexistent or incomplete.')
+            logging.info('Calculating REFERENCE PCA....')
             X, X_bim, X_fam = read_bed(ref_filepref, dtype=np.float32)
             X_mean, X_std = standardize(X)
             s, V = eig_ref(X)[:2]
@@ -401,10 +445,9 @@ def pca(ref_filepref, stu_filepref=None, out_filepref=None, method='oadp',
             pcs_ref = V[:, :dim_ref] * s[:dim_ref]
             U = X @ (V / s[:dim_ref])
             np.savetxt(ref_filepref+'_mnsd.dat', np.hstack((X_mean, X_std)), fmt=output_fmt)
-            np.savetxt(ref_filepref+'_Vs.dat', pcs_ref, fmt=output_fmt)
+            _write_pcs(pcs_ref, X_fam, colnames_pcs, ref_filepref, output_fmt)
             np.savetxt(ref_filepref+'_U.dat', U, fmt=output_fmt)
             save_vars_bim(X_bim, ref_filepref + '_vars.dat')
-            logging.info('Reference PC scores saved to ' + ref_filepref + '.pcs')
         pca_stu_kwargs = {'U':U, 'dim_ref':dim_ref}
 
     if method == 'adp':
@@ -413,40 +456,38 @@ def pca(ref_filepref, stu_filepref=None, out_filepref=None, method='oadp',
         X, X_bim, X_fam = read_bed(ref_filepref, dtype=np.float32)
         try:
             logging.info('Attemping to load saved reference PCA result...')
-            Xmnsd = np.loadtxt(ref_filepref+'_mnsd.dat')
-            X_mean = Xmnsd[:,0].reshape((-1,1))
-            X_std = Xmnsd[:,1].reshape((-1,1))
+            X_mean, X_std = _load_mnsd(ref_filepref)
             XTX = np.loadtxt(ref_filepref+'_XTX.dat')[:, :dim_ref]
             standardize(X, X_mean, X_std)
-            pcs_ref = np.loadtxt(ref_filepref+'_Vs.dat')[:, :dim_ref]
-            logging.info('Warning: If you have changed the parameter settings, please delete ' + ref_filepref + '_*.dat and rerun FRAPOSA.')
+            pcs_ref = _load_pcs_ref(ref_filepref)[:, :dim_ref]
+            logging.info('Warning: If you have changed the parameter settings, please delete '
+                         + ref_filepref + '_*.dat and ' + ref_filepref + '.pcs then rerun FRAPOSA.')
             logging.info('Reference PCA result loaded.')
         except OSError:
-            logging.info('Reference PCA result is either nonexistent or incomplete.')
-            logging.info('Calculating reference PCA....')
+            logging.info('REFERENCE PCA result is either nonexistent or incomplete.')
+            logging.info('Calculating REFERENCE PCA....')
             X_mean, X_std = standardize(X)
             s, V, XTX = eig_ref(X)
             V = V[:, :dim_ref]
             pcs_ref = V[:, :dim_ref] * s[:dim_ref]
             np.savetxt(ref_filepref+'_mnsd.dat', np.hstack((X_mean, X_std)), fmt=output_fmt)
-            np.savetxt(ref_filepref+'_Vs.dat', pcs_ref, fmt=output_fmt)
+            _write_pcs(pcs_ref, X_fam, colnames_pcs, ref_filepref, output_fmt)
             save_vars_bim(X_bim, ref_filepref + '_vars.dat')
-            logging.info('Reference PC scores saved to ' + ref_filepref + '.pcs')
         pca_stu_kwargs = {'pcs_ref':pcs_ref, 'XTX':XTX, 'X':X, 'dim_ref':dim_ref, 'dim_stu':dim_stu}
 
     if stu_filepref is not None:
         logging.info(datetime.now())
         logging.info('Loading study data...')
-        W, W_bim, W_fam = read_bed(stu_filepref, dtype=np.int8)
+        W, W_bim, W_fam = read_bed(stu_filepref, dtype=np.int8, filt_iid=stu_filt_iid)
 
+        # check to see that the variants are compatible between reference and study
         try:
-            check_bims(X_bim, W_bim)  # check to see that the variants are compatible between reference and study
-        except:
+            check_bims(X_bim, W_bim)
+        except NameError:
             with open(ref_filepref + '_vars.dat', 'r') as infile:
                 ref_vars = infile.read().strip().split('\n')
             stu_vars = bim_varlist(W_bim)
             check_varlist(ref_vars, stu_vars)
-        logging.info('Variants match across reference and study datasets')
 
         logging.info(datetime.now())
         logging.info('Predicting study PC scores (method: ' + method + ')...')
@@ -454,21 +495,17 @@ def pca(ref_filepref, stu_filepref=None, out_filepref=None, method='oadp',
         pcs_stu = pca_stu(W, X_mean, X_std, method, **pca_stu_kwargs)
         elapse_stu = time.time() - t0
 
-        X_fam = pd.read_table(ref_filepref+'.fam', header=None, sep=' ')
-        pcs_ref = np.loadtxt(ref_filepref+'_Vs.dat')
-        pcs_ref_df = pd.concat([X_fam.iloc[:,0:2], pd.DataFrame(pcs_ref)], axis=1)
-        pcs_ref_df.to_csv(ref_filepref+'.pcs', sep='\t', header=False, index=False)
-        pcs_stu_df = pd.concat([W_fam.iloc[:,0:2], pd.DataFrame(pcs_stu)], axis=1)
-        pcs_stu_df.to_csv(out_filepref+'.pcs', sep='\t', header=False, index=False)
-        # np.savetxt(out_filepref+'.pcs', pcs_stu, fmt=output_fmt, delimiter='\t')
-        logging.info('Study PC scores saved to ' + out_filepref+'.pcs')
+        # Write output
+        _write_pcs(pcs_stu, W_fam, colnames_pcs, out_filepref, output_fmt, stage='STUDY')
+
+        # Finish & Log
         logging.info('Study time: {} sec'.format(elapse_stu, 1))
         logging.info(datetime.now())
         logging.info('FRAPOSA finished.')
 
 
 def pred_popu_stu(ref_filepref, stu_filepref, n_neighbors=20, weights='uniform'):
-
+    # ToDo - test implementation
     # load reference and study pc scores and population
     ref_df = pd.read_table(ref_filepref+'.pcs', header=None)
     stu_df = pd.read_table(stu_filepref+'.pcs', header=None)
@@ -498,6 +535,7 @@ def pred_popu_stu(ref_filepref, stu_filepref, n_neighbors=20, weights='uniform')
 
 
 def plot_pcs(ref_filepref, stu_filepref):
+    # ToDo - test implementation
     pcs_ref = np.loadtxt(ref_filepref+'.pcs', dtype=str)[:,2:].astype(float)
     pcs_stu = np.loadtxt(stu_filepref+'.pcs', dtype=str)[:,2:].astype(float)
     try:
