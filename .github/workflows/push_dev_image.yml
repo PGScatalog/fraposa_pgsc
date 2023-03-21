@@ -41,15 +41,15 @@ jobs:
           platforms: "linux/amd64,linux/arm64"
           tags: ghcr.io/${{ env.REPO }}:dev
 
-      - name: Delete untagged ghcr
-        uses: Chizkiyahu/delete-untagged-ghcr-action@v2
+      - name: Prune
+        uses: vlaurin/action-ghcr-prune@v0.5.0
         with:
-          token: ${{ secrets.PAT_TOKEN }}
-          repository_owner: ${{ github.repository_owner }}
-          repository: ${{ github.repository }}          
-          owner_type: org           
-          untagged_only: true
-          except_untagged_multiplatform: true
+          token: ${{ secrets.PACKAGE_TOKEN }}
+          organization: ${{ github.repository_owner }}
+          container: ${{ github.event.repository.name }}
+          dry-run: false
+          keep-last: 3
+          prune-untagged: true
 
   build_singularity_dev:
     needs: build_docker_dev
