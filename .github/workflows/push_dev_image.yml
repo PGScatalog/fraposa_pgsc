@@ -76,9 +76,9 @@ jobs:
           echo "/opt/hostedtoolcache/singularity/${{ env.SINGULARITY_VERSION }}/x64/bin" >> $GITHUB_PATH
 
       - name: Build singularity image
-        run: singularity build img.sif "docker://${DOCKER_REGISTRY}/pgsc_fraposa:dev"
+        run: singularity build img.sif "docker://${{ env.REPO }}:dev"
 
       - name: Push singularity image
         run: |
-          echo "$REGISTRY_TOKEN" | singularity remote login -u "$REGISTRY_USERNAME" --password-stdin "$SINGULARITY_REGISTRY_LOGIN"
-          singularity push img.sif "${SINGULARITY_REGISTRY}/pgsc_fraposa:dev"
+          echo "$GITHUB_TOKEN" | singularity remote login -u "$GITHUB_ACTOR" --password-stdin oras://ghcr.io
+          singularity push img.sif "oras://${{ env.REPO }}:dev-singularity"
