@@ -45,6 +45,9 @@ jobs:
         uses: Chizkiyahu/delete-untagged-ghcr-action@v2
         with:
           token: ${{ secrets.PAT_TOKEN }}
+          repository_owner: ${{ github.repository_owner }}
+          repository: ${{ github.repository }}          
+          owner_type: org           
           untagged_only: true
           except_untagged_multiplatform: true
 
