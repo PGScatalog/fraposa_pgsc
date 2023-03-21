@@ -84,5 +84,5 @@ jobs:
 
       - name: Push singularity image
         run: |
-          echo "$GITHUB_TOKEN" | singularity remote login -u "$GITHUB_ACTOR" --password-stdin oras://ghcr.io
+          echo "${{ secrets.GITHUB_TOKEN }}" | singularity remote login -u "$GITHUB_ACTOR" --password-stdin oras://ghcr.io
           singularity push img.sif "oras://ghcr.io/${{ env.REPO }}:dev-singularity"
