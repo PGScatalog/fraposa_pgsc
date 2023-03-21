@@ -80,9 +80,9 @@ jobs:
           echo "REPO=$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]')" >> ${GITHUB_ENV}
           
       - name: Build singularity image
-        run: singularity build img.sif "docker://${{ env.REPO }}:dev"
+        run: singularity build img.sif "docker://ghcr.io/${{ env.REPO }}:dev"
 
       - name: Push singularity image
         run: |
           echo "$GITHUB_TOKEN" | singularity remote login -u "$GITHUB_ACTOR" --password-stdin oras://ghcr.io
-          singularity push img.sif "oras://${{ env.REPO }}:dev-singularity"
+          singularity push img.sif "oras://ghcr.io/${{ env.REPO }}:dev-singularity"
