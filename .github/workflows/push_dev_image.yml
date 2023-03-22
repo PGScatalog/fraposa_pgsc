@@ -6,6 +6,12 @@ on:
       - dev
 
 env:
+  REGISTRY_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  REGISTRY_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+  DOCKER_REGISTRY_LOGIN: "dockerhub.ebi.ac.uk"
+  SINGULARITY_REGISTRY_LOGIN: "oras://dockerhub.ebi.ac.uk"
+  DOCKER_REGISTRY: "dockerhub.ebi.ac.uk/gdp-public/fraposa_pgsc"
+  SINGULARITY_REGISTRY: "oras://dockerhub.ebi.ac.uk/gdp-public/fraposa_pgsc/singularity"
   SINGULARITY_VERSION: "3.8.3"
 
 jobs:
@@ -26,30 +32,16 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.PACKAGE_TOKEN }}
-
-      - name: downcase GITHUB_REPOSITORY
-        run: |
-          echo "REPO=$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]')" >> ${GITHUB_ENV}
+          registry: ${{ env.DOCKER_REGISTRY_LOGIN }}
+          username: ${{ env.REGISTRY_USERNAME }}
+          password: ${{ env.REGISTRY_TOKEN }}
 
       - name: Build and push
         uses: docker/build-push-action@v3
         with:
           push: true
           platforms: "linux/amd64,linux/arm64"
-          tags: ghcr.io/${{ env.REPO }}:dev
-
-      - name: Prune
-        uses: vlaurin/action-ghcr-prune@v0.5.0
-        with:
-          token: ${{ secrets.PACKAGE_TOKEN }}
-          organization: ${{ github.repository_owner }}
-          container: ${{ github.event.repository.name }}
-          dry-run: false
-          keep-last: 3
-          prune-untagged: true
+          tags: ${{ env.DOCKER_REGISTRY }}/pgsc_fraposa:dev
 
   build_singularity_dev:
     needs: build_docker_dev
@@ -79,14 +71,10 @@ jobs:
         run: |
           echo "/opt/hostedtoolcache/singularity/${{ env.SINGULARITY_VERSION }}/x64/bin" >> $GITHUB_PATH
 
-      - name: downcase GITHUB_REPOSITORY
-        run: |
-          echo "REPO=$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]')" >> ${GITHUB_ENV}
-
       - name: Build singularity image
-        run: singularity build img.sif "docker://ghcr.io/${{ env.REPO }}:dev"
+        run: singularity build img.sif "docker://${DOCKER_REGISTRY}/pgsc_fraposa:dev"
 
       - name: Push singularity image
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | singularity remote login -u "$GITHUB_ACTOR" --password-stdin oras://ghcr.io
-          singularity push img.sif "oras://ghcr.io/${{ env.REPO }}:dev-singularity"
+          echo "$REGISTRY_TOKEN" | singularity remote login -u "$REGISTRY_USERNAME" --password-stdin "$SINGULARITY_REGISTRY_LOGIN"
+          singularity push img.sif "${SINGULARITY_REGISTRY}/pgsc_fraposa:dev"
