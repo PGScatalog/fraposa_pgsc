@@ -180,7 +180,7 @@ def check_varlist(ref_vl, stu_vl):
         logging.error("ABORT: Different number of variants between reference ({}) and study ({}) datasets.".format(len(ref_vl), len(stu_vl)))
         sys.exit(1)
 
-    if ref_vl != stu_vl:
+    if set(ref_vl).difference(set(stu_vl)):
         logging.error("ABORT: Variants do not match across bim files (comp keys: {'chrom', 'pos', 'a1', 'a2'})")
         sys.exit(1)
 
