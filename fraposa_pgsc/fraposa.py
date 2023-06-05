@@ -177,7 +177,7 @@ def compare_variants(ref_variants: Union[pd.DataFrame, list[str]],
     ref_vars: list[str]
     stu_vars: list[str]
     match (ref_variants, study_variants):
-        case (pd.DataFrame, pd.DataFrame):
+        case (pd.DataFrame(), pd.DataFrame()):
             ref_vars = bim_varlist(ref_variants)
             stu_vars = bim_varlist(study_variants)
         case (list(), list()):
@@ -188,7 +188,7 @@ def compare_variants(ref_variants: Union[pd.DataFrame, list[str]],
 
     match_type: MatchType = check_varlist(ref_vars, stu_vars)
     ref_indexed: dict[str: int] = {variant: index for index, variant in enumerate(ref_vars)}
-    stu_indexed: list[int] = [ref_indexed[variant] for variant in study_variants]
+    stu_indexed: list[int] = [ref_indexed[variant] for variant in stu_vars]
 
     match match_type:
         case MatchType.DIFFERENT_SIZE:
@@ -207,7 +207,7 @@ def compare_variants(ref_variants: Union[pd.DataFrame, list[str]],
         case _:
             raise TypeError(f"Invalid match type {match_type}")
 
-    return Variants(reference_variants=ref_variants,
+    return Variants(reference_variants=ref_vars,
                     study_variants=ordered_stu_vars,
                     match_type=match_type,
                     study_indexes=stu_indexed)
