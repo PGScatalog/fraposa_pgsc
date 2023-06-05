@@ -2,6 +2,7 @@ import os
 from distutils.dir_util import copy_tree
 from unittest.mock import patch
 
+import pandas as pd
 import pytest
 
 from fraposa_pgsc.fraposa_runner import main
@@ -14,9 +15,21 @@ def ref_data(tmp_path_factory):
     return fn.resolve()
 
 
-def test_fraposa(ref_data):
-    args: list[str] = ['fraposa', "--stu_filepref", "example_comm", "thousand_comm"]
+@pytest.fixture(scope="session")
+def filt_id(ref_data):
+    df = pd.read_table(os.path.join(ref_data, "example_comm.fam"), header=None)
+    subset: list[str] = df[0].to_list()[:100]
+    with open(os.path.join(ref_data, "filt.txt"), "w") as filt:
+        [filt.write(x + "\n") for x in subset]
 
+    return os.path.join(ref_data, "filt.txt")
+
+
+@pytest.mark.parametrize("args", [
+    ['fraposa', "--stu_filepref", "example_comm", "thousand_comm"],
+    ['fraposa', "--stu_filepref", "example_comm", "thousand_comm", "--stu_filt_iid", "filt.txt"]
+])
+def test_fraposa(ref_data, filt_id, args):
     with patch('sys.argv', args):
         cwd = os.getcwd()
         os.chdir(ref_data)
