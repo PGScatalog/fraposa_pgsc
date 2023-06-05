@@ -1,13 +1,14 @@
 ## FRAPOSA: Fast and Robust Ancestry Prediction by Online singular value decomposition and Shrinkage Adjustment
 ## Original Author: David (Daiwei) Zhang
 ## Modifications: Samuel Lambert
-from enum import Enum
 
 import matplotlib
 import numpy as np
 import pandas as pd
 from pyplink import PyPlink
 from sklearn.neighbors import KNeighborsClassifier
+
+from fraposa_pgsc.Variants import MatchType, Variants
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -171,7 +172,7 @@ def bim_varlist(bim):
 
 
 def compare_variants(ref_variants: Union[pd.DataFrame, list[str]],
-                     study_variants: Union[pd.DataFrame, list[str]]) -> [list[str], list[str]]:
+                     study_variants: Union[pd.DataFrame, list[str]]) -> Variants:
     """Function to ensure that the variants are consistently ordered across files"""
     ref_vars: list[str]
     stu_vars: list[str]
@@ -185,50 +186,44 @@ def compare_variants(ref_variants: Union[pd.DataFrame, list[str]],
         case _:
             raise TypeError(f"Invalid variant types: {type(ref_variants)} and {type(study_variants)}")
 
-    match_type: VariantMatch = check_varlist(ref_vars, stu_vars)
+    match_type: MatchType = check_varlist(ref_vars, stu_vars)
+    ref_indexed: dict[str: int] = {variant: index for index, variant in enumerate(ref_vars)}
+    stu_indexed: list[int] = [ref_indexed[variant] for variant in study_variants]
 
     match match_type:
-        case VariantMatch.DIFFERENT_SIZE:
+        case MatchType.DIFFERENT_SIZE:
             logging.critical(
                 f"ABORT: Different number of variants between reference ({len(ref_vars)}) and study ({len(stu_vars)}) datasets.")
             sys.exit(1)
-        case VariantMatch.DIFFERENT_ID:
+        case MatchType.DIFFERENT_ID:
             logging.critical("ABORT: Variants do not match across bim files (comp keys: {'chrom', 'pos', 'a1', 'a2'})")
             sys.exit(1)
-        case VariantMatch.ORDERED:
+        case MatchType.ORDERED:
             logging.info("Variants match across reference and study datasets")
-            return ref_vars, stu_vars
-        case VariantMatch.UNORDERED:
+            ordered_stu_vars = ref_vars
+        case MatchType.UNORDERED:
             logging.warning("Re-ordering study variants")
-            ref_indexed = {value: index for index, value in enumerate(ref_vars)}
             ordered_stu_vars = sorted(stu_vars, key=ref_indexed.get)
-            assert ref_vars == ordered_stu_vars
-            return ref_vars, ordered_stu_vars
         case _:
             raise TypeError(f"Invalid match type {match_type}")
 
-
-class VariantMatch(Enum):
-    # the study variants and reference variants intersect perfectly and are in the same order
-    ORDERED = 0
-    # the study variants and reference variants intersect perfectly but are not in the same order
-    UNORDERED = 1
-    # enums below will cause fraposa to explode and terminate ASAP
-    DIFFERENT_SIZE = 2
-    DIFFERENT_ID = 3
+    return Variants(reference_variants=ref_variants,
+                    study_variants=ordered_stu_vars,
+                    match_type=match_type,
+                    study_indexes=stu_indexed)
 
 
-def check_varlist(ref_vl: list[str], stu_vl: list[str]) -> VariantMatch:
+def check_varlist(ref_vl: list[str], stu_vl: list[str]) -> MatchType:
     if len(ref_vl) != len(stu_vl):
-        return VariantMatch.DIFFERENT_SIZE
+        return MatchType.DIFFERENT_SIZE
 
     if ref_vl != stu_vl:
         if set(ref_vl).difference(set(stu_vl)):
-            return VariantMatch.DIFFERENT_ID
+            return MatchType.DIFFERENT_ID
         else:
-            return VariantMatch.UNORDERED
+            return MatchType.UNORDERED
 
-    return VariantMatch.ORDERED
+    return MatchType.ORDERED
 
 
 def save_vars_bim(bim, loc_output):
@@ -525,15 +520,14 @@ def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, m
 
         # check to see that the variants are compatible between reference and study
         try:
-            # just check, don't use returned results
-            _, _ = compare_variants(X_bim, W_bim)
+            variants: Variants = compare_variants(ref_variants=X_bim, study_variants=W_bim)
         except NameError:
             with open(ref_filepref + '_vars.dat', 'r') as infile:
                 ref_vars = infile.read().strip().split('\n')
             stu_vars = bim_varlist(W_bim)
-            # check and use re-ordered study vars if needed
             # TODO: need to re-order stu_filepref?
-            _, stu_vars = compare_variants(ref_vars, stu_vars)
+            variants: Variants = compare_variants(ref_variants=ref_vars, study_variants=stu_vars)
+
 
         logging.info(datetime.now())
         logging.info('Predicting study PC scores (method: ' + method + ')...')
