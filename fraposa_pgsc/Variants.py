@@ -23,7 +23,7 @@ class Variants:
     match_type: MatchType
     # study_indexes: the order that reference variants appeared in the study variant list
     # used to re-index study genotypes to match the ordered study variants
-    study_indexes: dict[str: int]
+    study_indexes: list[int]
 
     def __repr__(self):
         attrs = ["Variants object, containing:",
