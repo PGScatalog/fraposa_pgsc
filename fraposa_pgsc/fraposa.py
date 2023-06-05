@@ -525,9 +525,11 @@ def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, m
             with open(ref_filepref + '_vars.dat', 'r') as infile:
                 ref_vars = infile.read().strip().split('\n')
             stu_vars = bim_varlist(W_bim)
-            # TODO: need to re-order stu_filepref?
             variants: Variants = compare_variants(ref_variants=ref_vars, study_variants=stu_vars)
 
+        if variants.match_type == MatchType.UNORDERED:
+            logging.info("Re-indexing genotypes because variants were unordered")
+            W = W[variants.study_indexes]
 
         logging.info(datetime.now())
         logging.info('Predicting study PC scores (method: ' + method + ')...')
