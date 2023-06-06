@@ -202,7 +202,7 @@ def compare_variants(ref_variants: Union[pd.DataFrame, list[str]],
         case MatchType.ORDERED:
             logging.info("Variants match across reference and study datasets")
             ordered_stu_vars = ref_vars
-        case MatchType.UNORDERED:
+        case MatchType.DIFFERENT_ORDER:
             logging.warning("Re-ordering study variants")
             ordered_stu_vars = sorted(stu_vars, key=ref_indexed.get)
         case _:
@@ -222,7 +222,7 @@ def check_varlist(ref_vl: list[str], stu_vl: list[str]) -> MatchType:
         if set(ref_vl).difference(set(stu_vl)):
             return MatchType.DIFFERENT_ID
         else:
-            return MatchType.UNORDERED
+            return MatchType.DIFFERENT_ORDER
 
     return MatchType.ORDERED
 
@@ -528,8 +528,8 @@ def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, m
             stu_vars = bim_varlist(W_bim)
             variants: Variants = compare_variants(ref_variants=ref_vars, study_variants=stu_vars)
 
-        if variants.match_type == MatchType.UNORDERED:
-            logging.info("Re-indexing genotypes because variants were unordered")
+        if variants.match_type == MatchType.DIFFERENT_ORDER:
+            logging.info("Re-indexing variants and genotypes because study variant order was different to reference")
             W = W[variants.study_indexes, :]
             W_bim = W_bim.reindex(variants.study_variants)
 

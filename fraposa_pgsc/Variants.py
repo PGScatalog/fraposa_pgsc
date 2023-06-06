@@ -6,7 +6,7 @@ class MatchType(Enum):
     # the study variants and reference variants intersect perfectly and are in the same order
     ORDERED = 0
     # the study variants and reference variants intersect perfectly but are not in the same order
-    UNORDERED = 1
+    DIFFERENT_ORDER = 1
     # enums below will cause fraposa to explode and terminate ASAP
     DIFFERENT_SIZE = 2
     DIFFERENT_ID = 3
