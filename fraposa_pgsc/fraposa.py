@@ -530,7 +530,8 @@ def pca(ref_filepref, stu_filepref=None, stu_filt_iid=None, out_filepref=None, m
 
         if variants.match_type == MatchType.UNORDERED:
             logging.info("Re-indexing genotypes because variants were unordered")
-            W = W[variants.study_indexes]
+            W = W[variants.study_indexes, :]
+            W_bim = W_bim.reindex(variants.study_variants)
 
         logging.info(datetime.now())
         logging.info('Predicting study PC scores (method: ' + method + ')...')
