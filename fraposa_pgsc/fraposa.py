@@ -189,6 +189,7 @@ def compare_variants(ref_variants: Union[pd.DataFrame, list[str]],
     match_type: MatchType = check_varlist(ref_vars, stu_vars)
     ref_indexed: dict[str: int] = {variant: index for index, variant in enumerate(ref_vars)}
     stu_indexed: list[int] = [ref_indexed[variant] for variant in stu_vars]
+    ordered_stu_vars: list[str]
 
     match match_type:
         case MatchType.DIFFERENT_SIZE:
