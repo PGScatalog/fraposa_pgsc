@@ -1,7 +1,6 @@
 __pycache__
 *.log
 old
-data
 *.swp
 .python-version
 *.pdf
