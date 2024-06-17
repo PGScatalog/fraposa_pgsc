@@ -5,7 +5,7 @@ description = "Tools to perform ancestry projection to a reference dataset withi
 authors = ["smlmbrt <sam.a.lambert@gmail.com>"]
 license = "MIT License"
 readme = "README.md"
-packages = [{include = "fraposa_pgsc"}]
+packages = [{include = "fraposa_pgsc", from = "src"}]
 
 [tool.poetry.scripts]
 fraposa = "fraposa_pgsc.fraposa_runner:main"
