@@ -39,20 +39,24 @@ for integration with the Polygenic Score (PGS) Catalog pipeline for calculating 
 
 # Preprocessing
 
+> [!TIP]
+> The preprocessing and analysis steps described below are automated by the [PGS Catalog Calculator](https://github.com/PGScatalog/pgsc_calc)
+
 ## Extract common variants
 
 The reference and study samples must have the same set of variants (i.e. the two `.bim` files must be identical).
 To extract the common variants between two datasets, you can use PLINK manually or use the included `commvar.sh` script:
+
 ```
 ./commvar.sh refpref_raw stupref_raw refpref stupref
 ```
+
 This command will find the common variants in `refpref_raw.{bed,bim,fam}` and `stupref_raw.{bed,bim,fam}`
-and then output the intersected datasets in `refpref.{bed,bim,fam}` and `stupref.{bed,bim,fam}`. However; this reuqires 
-identical allele orientation between the two datasets. In the `pgsc_calc` pipeline we use a more flexible script 
-[intersect_variants.sh](https://github.com/PGScatalog/pgsc_calc/blob/465d77ff0c938f2cd7465afa41eb10be4a9e8b2c/bin/intersect_variants.sh)
-to identify variants that can be extacted within our 
-[subworkflow](https://github.com/PGScatalog/pgsc_calc/blob/fraposa/subworkflows/local/ancestry/ancestry_oadp.nf) 
-for ancestry analysis.
+and then output the intersected datasets in `refpref.{bed,bim,fam}` and `stupref.{bed,bim,fam}`. 
+
+> [!IMPORTANT]
+> `commvar.sh` requires identical allele orientation between the two datasets.
+> In the `pgsc_calc` pipeline we use a more flexible program [`pgscatalog-intersect`](https://github.com/PGScatalog/pygscatalog) to identify common variants
 
 ## Split study samples
 
