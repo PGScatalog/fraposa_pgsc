@@ -1,4 +1,7 @@
 # FRAPOSA_PGSC
+
+[![DOI](https://zenodo.org/badge/610312021.svg)](https://zenodo.org/badge/latestdoi/610312021)
+
 FRAPOSA (Fast and Robust Ancestry Prediction by using Online singular value decomposition and Shrinkage Adjustment)
 is a python script to predict the ancestry of study samples by the results of principal component analysis (PCA) on a 
 reference panel. The software originally accompanied 

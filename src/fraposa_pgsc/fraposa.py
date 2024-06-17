@@ -8,7 +8,7 @@ import pandas as pd
 from pyplink import PyPlink
 from sklearn.neighbors import KNeighborsClassifier
 
-from fraposa_pgsc.Variants import MatchType, Variants
+from fraposa_pgsc.variants import MatchType, Variants
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt

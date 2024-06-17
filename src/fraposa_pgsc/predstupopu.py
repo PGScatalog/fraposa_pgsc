@@ -1,9 +1,8 @@
-#! /usr/bin/env python
-
-import fraposa as fp
+import fraposa_pgsc.fraposa as fp
 import argparse
 
-if __name__ == '__main__':
+
+def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('ref_filepref', help='Prefix of binary PLINK file for the reference data.')
     parser.add_argument('stu_filepref', help='Prefix of binary PLINK file for the study data.')
@@ -19,3 +18,7 @@ if __name__ == '__main__':
         n_neighbors = int(args.nneighbors)
 
     fp.pred_popu_stu(args.ref_filepref, args.stu_filepref, n_neighbors, weights)
+
+
+if __name__ == '__main__':
+    main()

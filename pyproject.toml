@@ -1,24 +1,17 @@
 [tool.poetry]
 name = "fraposa-pgsc"
-version = "0.1.0"
+version = "0.1.1"
 description = "Tools to perform ancestry projection to a reference dataset within the calculator pipeline (pgsc_calc)"
 homepage = "https://github.com/PGScatalog/fraposa_pgsc"
 authors = ["smlmbrt <sam.a.lambert@gmail.com>"]
 license = "MIT License"
 readme = "README.md"
-packages = [{include = "fraposa_pgsc"}]
+packages = [{include = "fraposa_pgsc", from = "src"}]
 
 [tool.poetry.scripts]
 fraposa = "fraposa_pgsc.fraposa_runner:main"
 fraposa_pred = "fraposa_pgsc.predstupopu:main"
 fraposa_plot = "fraposa_pgsc.plotpcs:main"
-
-# note: poetry currently has half-implemented support for shell scripts
-# https://github.com/python-poetry/poetry/issues/241#issuecomment-1459952704
-# the created package bundles the script correctly in the built wheel file
-# but the script doesn't get added to PATH after poetry build + install
-# the dockerfile takes care of this: splitindiv.sh works as expected
-splitindiv = {reference = "scripts/splitindiv.sh", type = "file"}
 
 [tool.poetry.dependencies]
 python = "^3.10"
