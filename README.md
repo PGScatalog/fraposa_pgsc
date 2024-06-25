@@ -1,5 +1,6 @@
 # FRAPOSA_PGSC
 
+[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/fraposa-pgsc/README.html)
 [![DOI](https://zenodo.org/badge/610312021.svg)](https://zenodo.org/badge/latestdoi/610312021)
 
 FRAPOSA (Fast and Robust Ancestry Prediction by using Online singular value decomposition and Shrinkage Adjustment)
