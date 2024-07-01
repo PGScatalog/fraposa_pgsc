@@ -22,6 +22,7 @@ import logging
 from sklearn.utils.extmath import randomized_svd
 from typing import Union
 
+
 def create_logger(out_filepref='fraposa'):
     log = logging.getLogger()
     log.handlers = [] # Avoid duplicated logs in interactive modes
@@ -136,7 +137,16 @@ def read_bed(bed_filepref, dtype=np.int8, filt_iid=None):
     p = len(bim)
     n = len(fam)
 
-    if type(filt_iid) is list:
+    if (raw_len := len(fam)) != (uniq_len := len(set(fam['iid']))):
+        err_str = f""" 
+        Duplicated sample IIDs detected!
+        {raw_len} samples detected in fam file
+        {uniq_len} unique IIDs detected
+        Please fix your input data to remove duplicates
+        """
+        raise ValueError(err_str)
+
+    if isinstance(filt_iid, list):
         matched_ids = set(filt_iid).intersection(fam['iid'])
         if len(matched_ids) == 0:
             logging.error('ERROR: 0 / {} ids in filter list match the study dataset'.format(len(filt_iid)))
