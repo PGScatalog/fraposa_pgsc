@@ -1,5 +1,5 @@
 import os
-from distutils.dir_util import copy_tree
+import shutil
 from unittest.mock import patch
 
 import pandas as pd
@@ -11,7 +11,7 @@ from fraposa_pgsc.fraposa_runner import main
 @pytest.fixture(scope="session")
 def ref_data(tmp_path_factory):
     fn = tmp_path_factory.mktemp("data")
-    copy_tree("tests/data/", str(fn))
+    shutil.copytree("tests/data/", str(fn), dirs_exist_ok=True)
     return fn.resolve()
 
 
@@ -23,6 +23,18 @@ def filt_id(ref_data):
         [filt.write(x + "\n") for x in subset]
 
     return os.path.join(ref_data, "filt.txt")
+
+
+def test_duplicate_fraposa(ref_data, filt_id):
+    args = ['fraposa', "--stu_filepref", "dup_test", "dup_test", "--stu_filt_iid", filt_id]
+    with pytest.raises(ValueError) as excinfo:
+        with patch('sys.argv', args):
+            cwd = os.getcwd()
+            os.chdir(ref_data)
+            main()
+            os.chdir(cwd)
+
+    assert "Duplicated sample IIDs detected" in str(excinfo.value)
 
 
 @pytest.mark.parametrize("args", [
