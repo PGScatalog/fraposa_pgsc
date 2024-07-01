@@ -26,7 +26,7 @@ def filt_id(ref_data):
 
 
 def test_duplicate_fraposa(ref_data, filt_id):
-    args = ['fraposa', "--stu_filepref", "dup_test", "dup_test", "--stu_filt_iid", filt_id]
+    args = ['fraposa', "--stu_filepref", "dup_test", "thousand_comm", "--stu_filt_iid", filt_id]
     with pytest.raises(ValueError) as excinfo:
         with patch('sys.argv', args):
             cwd = os.getcwd()
