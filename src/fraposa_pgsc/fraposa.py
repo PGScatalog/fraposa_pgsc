@@ -21,7 +21,7 @@ import sys
 import logging
 from sklearn.utils.extmath import randomized_svd
 from typing import Union
-
+from sampleid import SampleID
 
 def create_logger(out_filepref='fraposa'):
     log = logging.getLogger()
@@ -137,22 +137,16 @@ def read_bed(bed_filepref, dtype=np.int8, filt_iid=None):
     p = len(bim)
     n = len(fam)
 
-    if isinstance(filt_iid, list):
-        matched_ids = set(filt_iid).intersection(fam['iid'])
+    if filt_iid:
+        fam_ids = set(SampleID(x, y) for x, y in zip(fam['fid'], fam['iid'], strict=True))
+        matched_ids = filt_iid.intersection(fam_ids)
         if len(matched_ids) == 0:
-            logging.error('ERROR: 0 / {} ids in filter list match the study dataset'.format(len(filt_iid)))
-            sys.exit(1)
-        elif (raw_len := len(fam)) != (uniq_len := len(set(fam['iid']))):
-            err_str = f""" 
-            Duplicated sample IIDs detected!
-            {raw_len} samples detected in fam file
-            {uniq_len} unique IIDs detected
-            Please fix your input data to remove duplicates
-            """
-            raise ValueError(err_str)
+            raise ValueError(f"ERROR: 0 / {len(filt_iid)} ids in filter list match the study dataset")
+        elif len(fam_ids) != len(fam):
+            raise ValueError("Samples with duplicated FID + IID detected, please remove and retry")
 
         bed = np.zeros(shape=(p, len(matched_ids)), dtype=dtype)
-        fam_mask = fam.iid.isin(matched_ids)
+        fam_mask = fam.iid.isin((x.IID for x in matched_ids)) & fam.fid.isin(x.FID for x in matched_ids)
         i_extract = np.where(fam_mask == True)
         for (i, (snp, genotypes)) in enumerate(pyp):
             bed[i,:] = genotypes[i_extract]

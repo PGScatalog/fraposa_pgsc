@@ -1,6 +1,8 @@
 #! /usr/bin/env python
+import csv
 
 import fraposa_pgsc.fraposa as fp
+from sampleid import SampleID
 import argparse
 
 
@@ -29,13 +31,18 @@ def main():
     dim_rand = None
     dim_spikes = None
     dim_spikes_max = None
-    stu_filt_iid = None
 
     if args.stu_filepref:
         stu_filepref = args.stu_filepref
         out_filepref = stu_filepref
-        if args.stu_filt_iid:
-            stu_filt_iid = open(args.stu_filt_iid, 'r').read().strip().split('\n')
+
+    try:
+        with open(args.stu_filt_iid) as f:
+            reader = csv.reader(f, delimiter="\t")
+            stu_filt_iid = set(SampleID(x[0], x[1]) for x in list(reader))
+    except TypeError:
+        stu_filt_iid = None
+
     if args.out:
         out_filepref = args.out
     if args.method:
