@@ -2,7 +2,7 @@
 import csv
 
 import fraposa_pgsc.fraposa as fp
-from sampleid import SampleID
+from .sampleid import SampleID
 import argparse
 
 
@@ -42,6 +42,8 @@ def main():
             stu_filt_iid = set(SampleID(x[0], x[1]) for x in list(reader))
     except TypeError:
         stu_filt_iid = None
+    except IndexError:
+        raise ValueError("Can't parse --stu_filt_iid file (it should be a plink fam file)")
 
     if args.out:
         out_filepref = args.out

@@ -21,7 +21,8 @@ import sys
 import logging
 from sklearn.utils.extmath import randomized_svd
 from typing import Union
-from sampleid import SampleID
+
+from .sampleid import SampleID
 
 def create_logger(out_filepref='fraposa'):
     log = logging.getLogger()
