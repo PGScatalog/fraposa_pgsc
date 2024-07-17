@@ -343,9 +343,16 @@ def pca_stu(W, X_mean, X_std, method,
 
 
 def _write_pcs(df_pcs, df_fam, colnames, filepref, output_fmt, stage='REFERENCE'):
-    pcs_ref = pd.DataFrame(data=df_pcs, index=df_fam['iid'], columns=colnames)
-    pcs_ref.index.name = 'IID'
-    pcs_ref.to_csv(filepref + '.pcs', sep='\t', header=True, index=True, float_format=output_fmt)
+    pcs_ref = pd.DataFrame(data=df_pcs, index=df_fam[["fid", "iid"]], columns=colnames)
+    pcs_ref.index = pd.MultiIndex.from_tuples(pcs_ref.index, names=['FID', 'IID'])
+    pcs_ref = pcs_ref.reset_index()  # index to normal columns
+
+    # FID is always a string
+    if all(pcs_ref["FID"] == "0"):
+        # column is present but missing data
+        pcs_ref["FID"] = pcs_ref["IID"]
+
+    pcs_ref.to_csv(filepref + '.pcs', sep='\t', header=True, index=False, float_format=output_fmt)
     logging.info('{} PC scores saved to {}.pcs'.format(stage, filepref))
 
 

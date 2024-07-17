@@ -2,7 +2,7 @@
 import csv
 
 import fraposa_pgsc.fraposa as fp
-from .sampleid import SampleID
+from fraposa_pgsc.sampleid import SampleID
 import argparse
 
 
