@@ -148,7 +148,7 @@ def read_bed(bed_filepref, dtype=np.int8, filt_iid=None):
 
         bed = np.zeros(shape=(p, len(matched_ids)), dtype=dtype)
         # in will call SampleID's __hash__ method which uses (fid, iid)
-        fam_mask = pd.Series((x in fam_ids for x in matched_ids))
+        fam_mask = pd.Series((x in matched_ids for x in fam_ids), dtype=bool)
         i_extract = np.where(fam_mask == True)
         for (i, (snp, genotypes)) in enumerate(pyp):
             bed[i,:] = genotypes[i_extract]
