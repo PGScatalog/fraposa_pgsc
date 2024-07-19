@@ -147,7 +147,8 @@ def read_bed(bed_filepref, dtype=np.int8, filt_iid=None):
             raise ValueError("Samples with duplicated FID + IID detected, please remove and retry")
 
         bed = np.zeros(shape=(p, len(matched_ids)), dtype=dtype)
-        fam_mask = fam.iid.isin((x.IID for x in matched_ids)) & fam.fid.isin(x.FID for x in matched_ids)
+        # in will call SampleID's __hash__ method which uses (fid, iid)
+        fam_mask = pd.Series((x in fam_ids for x in matched_ids))
         i_extract = np.where(fam_mask == True)
         for (i, (snp, genotypes)) in enumerate(pyp):
             bed[i,:] = genotypes[i_extract]
