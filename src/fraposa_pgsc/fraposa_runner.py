@@ -1,6 +1,8 @@
 #! /usr/bin/env python
+import csv
 
 import fraposa_pgsc.fraposa as fp
+from fraposa_pgsc.sampleid import SampleID
 import argparse
 
 
@@ -8,7 +10,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('ref_filepref', help='Prefix of the binary PLINK file for the reference samples.')
     parser.add_argument('--stu_filepref', help='Prefix of the binary PLINK file for the study samples.')
-    parser.add_argument('--stu_filt_iid', help='File with list of IIDs to extract from the study file')
+    parser.add_argument('--stu_filt_iid', help='File with list of FIDs and IIDs to extract from the study file (bim format)')
     parser.add_argument('--method', help='The method for PCA prediction. oadp: most accurate. adp: accurate but slow. sp: fast but inaccurate. Default is odap.')
     parser.add_argument('--dim_ref', help='Number of PCs you need.')
     parser.add_argument('--dim_stu', help='Number of PCs predicted for the study samples before doing the Procrustes transformation. Only needed for the oadp and adp methods. Default is 2*dim_ref.')
@@ -29,13 +31,20 @@ def main():
     dim_rand = None
     dim_spikes = None
     dim_spikes_max = None
-    stu_filt_iid = None
 
     if args.stu_filepref:
         stu_filepref = args.stu_filepref
         out_filepref = stu_filepref
-        if args.stu_filt_iid:
-            stu_filt_iid = open(args.stu_filt_iid, 'r').read().strip().split('\n')
+
+    try:
+        with open(args.stu_filt_iid) as f:
+            reader = csv.reader(f, delimiter="\t")
+            stu_filt_iid = set(SampleID(x[0], x[1]) for x in list(reader))
+    except TypeError:
+        stu_filt_iid = None
+    except IndexError:
+        raise ValueError("Can't parse --stu_filt_iid file (it should be a plink fam file)")
+
     if args.out:
         out_filepref = args.out
     if args.method:
