@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fraposa-pgsc"
-version = "1.0.0"
+version = "1.0.1"
 description = "Tools to perform ancestry projection to a reference dataset within the calculator pipeline (pgsc_calc)"
 homepage = "https://github.com/PGScatalog/fraposa_pgsc"
 authors = ["smlmbrt <sam.a.lambert@gmail.com>"]

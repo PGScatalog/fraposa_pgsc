@@ -2,7 +2,6 @@
 import csv
 
 import fraposa_pgsc.fraposa as fp
-from fraposa_pgsc.sampleid import SampleID
 import argparse
 
 
@@ -38,8 +37,17 @@ def main():
 
     try:
         with open(args.stu_filt_iid) as f:
-            reader = csv.reader(f, delimiter="\t")
-            stu_filt_iid = set(SampleID(x[0], x[1]) for x in list(reader))
+            reader = csv.reader(f, delimiter="\t") # reads columns as str
+            stu_filt_iid = []
+            for x in reader:
+                if x[0] == "0":
+                    stu_filt_iid.append((x[1],x[1])) # replace missing FID with IID
+                else:
+                    stu_filt_iid.append((x[0], x[1])) # return FID, IID
+            l_input = len(stu_filt_iid)
+            stu_filt_iid = set(stu_filt_iid)
+            if l_input != len(stu_filt_iid):
+                raise ValueError("Duplicate IDs found in filter list")
     except TypeError:
         stu_filt_iid = None
     except IndexError:
