@@ -139,25 +139,24 @@ def read_bed(bed_filepref, dtype=np.int8, filt_iid=None):
     n = len(fam)
 
     if filt_iid:
-        fam_ids = set(SampleID(x, y) for x, y in zip(fam['fid'], fam['iid'], strict=True))
-        matched_ids = filt_iid.intersection(fam_ids)
-        if len(matched_ids) == 0:
+        fam_ids = list(zip(fam['fid'], fam['iid']))
+        fam_mask = [x in filt_iid for x in fam_ids]
+        n_matched = sum(fam_mask)
+        if n_matched == 0:
             raise ValueError(f"ERROR: 0 / {len(filt_iid)} ids in filter list match the study dataset")
-        elif len(fam_ids) != len(fam):
+        elif len(set(fam_ids)) != len(fam):
             raise ValueError("Samples with duplicated FID + IID detected, please remove and retry")
 
-        bed = np.zeros(shape=(p, len(matched_ids)), dtype=dtype)
-        # in will call SampleID's __hash__ method which uses (fid, iid)
-        fam_mask = pd.Series((x in matched_ids for x in fam_ids), dtype=bool)
-        i_extract = np.where(fam_mask == True)
+        bed = np.zeros(shape=(p, n_matched), dtype=dtype)
+        i_extract = [i for i, x in enumerate(fam_mask) if x is True]
         for (i, (snp, genotypes)) in enumerate(pyp):
             bed[i,:] = genotypes[i_extract]
         fam = fam.loc[fam_mask,:]
-        if len(matched_ids) < len(filt_iid):
-            logging.warning('Warning: only {} / {} ids in filter list match the study dataset'.format(len(matched_ids),
+        if n_matched < len(filt_iid):
+            logging.warning('Warning: only {} / {} ids in filter list match the study dataset'.format(n_matched,
                                                                                                       len(filt_iid)))
         else:
-            logging.info('Extracted {} samples from study genotyping data'.format(len(matched_ids)))
+            logging.info('Extracted {} samples from study genotyping data'.format(n_matched))
     else:
         bed = np.zeros(shape=(p, n), dtype=dtype)
         for (i, (snp, genotypes)) in enumerate(pyp):
