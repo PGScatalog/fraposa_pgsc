@@ -40,10 +40,7 @@ def main():
             reader = csv.reader(f, delimiter="\t") # reads columns as str
             stu_filt_iid = []
             for x in reader:
-                if x[0] == "0":
-                    stu_filt_iid.append((x[1],x[1])) # replace missing FID with IID
-                else:
-                    stu_filt_iid.append((x[0], x[1])) # return FID, IID
+                stu_filt_iid.append((x[0], x[1])) # return FID, IID
             l_input = len(stu_filt_iid)
             stu_filt_iid = set(stu_filt_iid)
             if l_input != len(stu_filt_iid):
