@@ -138,8 +138,8 @@ def read_bed(bed_filepref, dtype=np.int8, filt_iid=None):
     n = len(fam)
 
     if filt_iid:
-        fam_ids = list(zip(fam['fid'], fam['iid']))
-        fam_mask = [x in filt_iid for x in fam_ids]
+        fam_ids = list(zip(fam['fid'], fam['iid'])) # create tuples of ids from genotyping files
+        fam_mask = [x in filt_iid for x in fam_ids] # T/F overlap of genotype data and filter IDs (tuples)
         n_matched = sum(fam_mask)
         if n_matched == 0:
             raise ValueError(f"ERROR: 0 / {len(filt_iid)} ids in filter list match the study dataset")
@@ -147,7 +147,7 @@ def read_bed(bed_filepref, dtype=np.int8, filt_iid=None):
             raise ValueError("Samples with duplicated FID + IID detected, please remove and retry")
 
         bed = np.zeros(shape=(p, n_matched), dtype=dtype)
-        i_extract = [i for i,x in enumerate(fam_mask) if x is True]
+        i_extract = [i for i,x in enumerate(fam_mask) if x is True] # idx to extract from genotype matrix
         for (i, (snp, genotypes)) in enumerate(pyp):
             bed[i,:] = genotypes[i_extract]
         fam = fam.loc[fam_mask,:]

@@ -37,7 +37,7 @@ def main():
 
     try:
         with open(args.stu_filt_iid) as f:
-            reader = csv.reader(f, delimiter="\t")
+            reader = csv.reader(f, delimiter="\t") # reads columns as str
             stu_filt_iid = []
             for x in reader:
                 if x[0] == "0":
